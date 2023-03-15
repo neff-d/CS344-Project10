@@ -55,7 +55,7 @@ void new_process(int proc_num, int page_count)
 
     printf("Proc_Num: %d\n", proc_num);
     printf("Page_Count: %d\n", page_count);
-
+    
     if(page_count >= 64){
         printf("OOM: proc %d: page table\n", proc_num);
         return;
@@ -148,10 +148,16 @@ int main(int argc, char *argv[])
 
 int allocate_page(int proc_num){
     
-    int free_pages = 63;
+    int free_pages = 0;
 
     for(int i = 0; i < 64; i++){
-        if(free_pages == 0){
+        if(mem[i] == 0){
+            free_pages++;
+        }
+    }
+
+    for(int i = 0; i < 64; i++){
+        if(free_pages == 0 && proc_num != 1){
             printf("OOM: proc %d: data page\n", proc_num);
             return i;
         }         
