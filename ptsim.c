@@ -159,7 +159,7 @@ int allocate_page(int proc_num){
     for(int i = 0; i < 64; i++){
         if(free_pages == 0 && proc_num != 1){
             printf("OOM: proc %d: data page\n", proc_num);
-            return i;
+            exit(1);
         }         
         else if(mem[i] == 0 && free_pages > 0){
             mem[i] = 1;
