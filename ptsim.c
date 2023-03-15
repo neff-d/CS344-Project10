@@ -11,7 +11,7 @@
 #define PTP_OFFSET 64 // How far offset in page 0 is the page table pointer table
 
 
-int allocate_page();
+int allocate_page(int);
 
 
 // Simulated RAM
@@ -56,11 +56,16 @@ void new_process(int proc_num, int page_count)
     printf("Proc_Num: %d\n", proc_num);
     printf("Page_Count: %d\n", page_count);
 
-    int page_table = allocate_page();
+    if(page_count >= 64){
+        printf("OOM: proc %d: page table\n", proc_num);
+        return;
+    }
+
+    int page_table = allocate_page(proc_num);
     mem[64 + proc_num] = page_table;
 
     for(int i = 0; i < page_count; i++){
-        int new_page = allocate_page();
+        int new_page = allocate_page(proc_num);
         int pt_addr = get_address(page_table, i);
         mem[pt_addr] = new_page;        
     }
@@ -141,11 +146,18 @@ int main(int argc, char *argv[])
     }
 }
 
-int allocate_page(){
+int allocate_page(int proc_num){
+    
+    int free_pages = 63;
 
     for(int i = 0; i < 64; i++){
-        if(mem[i] == 0){
+        if(free_pages == 0){
+            printf("OOM: proc %d: data page\n", proc_num);
+            return i;
+        }         
+        else if(mem[i] == 0 && free_pages > 0){
             mem[i] = 1;
+            free_pages--;
             return i;
         }
     }
