@@ -12,6 +12,11 @@
 
 
 int allocate_page(int);
+void deallocate_page(int);
+void kill_process(int);
+int get_physical_address(int, int);
+void store_value(int, int, int);
+void load_value(int, int);
 
 
 // Simulated RAM
@@ -52,10 +57,7 @@ unsigned char get_page_table(int proc_num)
 //
 void new_process(int proc_num, int page_count)
 {
-
-    printf("Proc_Num: %d\n", proc_num);
-    printf("Page_Count: %d\n", page_count);
-    
+ 
     if(page_count >= 64){
         printf("OOM: proc %d: page table\n", proc_num);
         return;
@@ -68,9 +70,7 @@ void new_process(int proc_num, int page_count)
         int new_page = allocate_page(proc_num);
         int pt_addr = get_address(page_table, i);
         mem[pt_addr] = new_page;        
-    }
-
-    
+    }  
 }
 
 //
@@ -123,26 +123,41 @@ int main(int argc, char *argv[])
 {
     assert(PAGE_COUNT * PAGE_SIZE == MEM_SIZE);
 
-    if (argc == 1) {
+    if(argc == 1) {
         fprintf(stderr, "usage: ptsim commands\n");
         return 1;
     }
     
     initialize_mem();
 
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "pfm") == 0) {
+    for(int i = 1; i < argc; i++) {
+        if(strcmp(argv[i], "pfm") == 0) {
             print_page_free_map();
         }
-        else if (strcmp(argv[i], "ppt") == 0) {
+        else if(strcmp(argv[i], "ppt") == 0) {
             int proc_num = atoi(argv[++i]);
             print_page_table(proc_num);
         }
-        else if (strcmp(argv[i], "np") == 0) {
+        else if(strcmp(argv[i], "np") == 0) {
             int proc_num = atoi(argv[i + 1]);
             int num_pages = atoi(argv[i + 2]);
             new_process(proc_num, num_pages);
-        }            
+        }
+        else if(strcmp(argv[i], "kp") == 0) {
+            int proc_num = atoi(argv[i + 1]);
+            kill_process(proc_num);
+        }           
+        else if(strcmp(argv[i], "sb") == 0) {
+            int proc_num = atoi(argv[i + 1]);
+            int virtual_address = atoi(argv[i + 2]);
+            int value = atoi(argv[i + 3]);
+            store_value(proc_num, virtual_address, value);
+        }
+        else if(strcmp(argv[i], "lb") == 0){
+            int proc_num = atoi(argv[i + 1]);
+            int virtual_address = atoi(argv[i + 2]);
+            load_value(proc_num, virtual_address);
+        } 
     }
 }
 
@@ -168,4 +183,48 @@ int allocate_page(int proc_num){
         }
     }
     return 0xff;
+}
+
+void deallocate_page(int p){
+    mem[p] = 0;
+}
+
+void kill_process(int proc_num){
+    int page_table_page = mem[proc_num + 64];
+    
+    unsigned char page_table = get_page_table(proc_num);
+
+    for(int i = 1; i < PAGE_COUNT; i++){
+        int address = get_address(page_table, i);
+        if(address != 0 && address != mem[0]){
+            deallocate_page(mem[address]);
+        }
+    }
+    deallocate_page(page_table_page);    
+}
+
+int get_physical_address(int proc_num, int virtual_address){
+    unsigned char page_table = get_page_table(proc_num);
+ 
+    int virtual_page = virtual_address >> 8;
+    int offset = virtual_address & 255;
+
+    int physical_page = get_address(page_table, virtual_page);
+    int physical_address = (physical_page << 8) | offset;
+
+    return physical_address;
+}
+
+void store_value(int proc_num, int virtual_address, int value){
+    int physical_address = get_physical_address(proc_num, virtual_address);
+    mem[physical_address] = value;
+
+    printf("Store proc %d: %d => %d, value = %d\n", proc_num, virtual_address, physical_address, value);
+}
+
+void load_value(int proc_num, int virtual_address){
+    int physical_address = get_physical_address(proc_num, virtual_address);
+    int value = mem[physical_address];
+
+    printf("Load proc %d: %d => %d, value = %d\n", proc_num, virtual_address, physical_address, value);
 }
